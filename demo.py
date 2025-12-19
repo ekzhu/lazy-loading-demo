@@ -6,8 +6,7 @@ import my_framework
 
 print("   [Check] Is extension loaded in sys.modules?", "my_framework_ext" in sys.modules)
 
-print("\n2. Doing core work (no extension needed)...")
-# time.sleep(1) 
+print("\n2. Doing core work (no extension needed)...") 
 
 print("\n3. Accessing extension for the first time...")
 # This triggers __getattr__ -> imports my_framework_ext

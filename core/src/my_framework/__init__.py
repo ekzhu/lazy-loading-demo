@@ -1,6 +1,6 @@
 import importlib
 import sys
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 # 1. Define the mapping: "accessing .ext" -> "imports my_framework_ext"
 _EXTENSION_MAP = {
@@ -23,7 +23,7 @@ def __getattr__(name: str) -> Any:
             
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-# 3. Optional: Help IDEs / Autocomplete know this attribute exists
-#    (Runtime doesn't need this, but Type Checkers do)
-if False:
-    from my_framework_ext import *
+# 3. Type checking support: Help IDEs and type checkers know this attribute exists
+#    This code only runs during type checking, not at runtime
+if TYPE_CHECKING:
+    from my_framework_ext import *  # type: ignore
