@@ -1,0 +1,230 @@
+name: Test Lazy Loading Demo
+
+on:
+  push:
+    branches: [ main, copilot/** ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-individual-packages:
+    name: Test Individual Package Installation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install hatchling
+    
+    - name: Install core package
+      run: pip install -e ./core
+    
+    - name: Install extension package
+      run: pip install -e ./extension
+    
+    - name: Verify packages are installed
+      run: |
+        pip list | grep my-framework
+        echo "---"
+        python -c "import my_framework; print('✓ Core package imported')"
+        python -c "import my_framework_ext; print('✓ Extension package imported')"
+    
+    - name: Run demo script
+      run: |
+        echo "Running demo.py..."
+        python demo.py > demo_output.txt
+        cat demo_output.txt
+    
+    - name: Verify lazy loading behavior
+      run: |
+        # Check that the output contains expected patterns
+        if grep -q "Is extension loaded in sys.modules? False" demo_output.txt; then
+          echo "✓ Extension not loaded initially (lazy loading works)"
+        else
+          echo "✗ Extension should not be loaded initially"
+          exit 1
+        fi
+        
+        if grep -q "Lazily importing 'my_framework_ext' for namespace 'ext'" demo_output.txt; then
+          echo "✓ Lazy import triggered"
+        else
+          echo "✗ Lazy import message not found"
+          exit 1
+        fi
+        
+        if grep -q "LOADING: my_framework_ext (The Extension)" demo_output.txt; then
+          echo "✓ Extension loaded on first access"
+        else
+          echo "✗ Extension loading message not found"
+          exit 1
+        fi
+        
+        if grep -q "Is extension loaded in sys.modules? True" demo_output.txt; then
+          echo "✓ Extension loaded after access"
+        else
+          echo "✗ Extension should be loaded after access"
+          exit 1
+        fi
+        
+        if grep -q "Result: Extension logic executed!" demo_output.txt; then
+          echo "✓ Extension functionality works"
+        else
+          echo "✗ Extension result not found"
+          exit 1
+        fi
+
+  test-meta-package:
+    name: Test Meta Package Installation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install hatchling
+    
+    - name: Install packages via meta package
+      run: |
+        pip install -e ./core
+        pip install -e ./extension
+        pip install -e ./meta
+    
+    - name: Verify all packages are installed
+      run: |
+        pip list | grep my-framework
+        echo "---"
+        echo "Checking package count..."
+        PACKAGE_COUNT=$(pip list | grep -c my-framework)
+        if [ "$PACKAGE_COUNT" -eq 3 ]; then
+          echo "✓ All 3 packages installed (core, extension, meta)"
+        else
+          echo "✗ Expected 3 packages, found $PACKAGE_COUNT"
+          exit 1
+        fi
+    
+    - name: Verify meta package dependencies
+      run: |
+        python -c "
+        import importlib.metadata
+        dist = importlib.metadata.distribution('my-framework-complete')
+        print(f'Meta package version: {dist.version}')
+        if dist.requires:
+            print('Dependencies:')
+            for req in dist.requires:
+                print(f'  - {req}')
+            # Check that both dependencies are present
+            deps = set(dist.requires)
+            if 'my-framework' in deps and 'my-framework-ext' in deps:
+                print('✓ Meta package has correct dependencies')
+            else:
+                print('✗ Meta package missing expected dependencies')
+                exit(1)
+        else:
+            print('✗ Meta package has no dependencies')
+            exit(1)
+        "
+    
+    - name: Run demo script
+      run: python demo.py
+
+  test-core-only:
+    name: Test Core Package Without Extension
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install hatchling
+    
+    - name: Install only core package
+      run: pip install -e ./core
+    
+    - name: Verify core works without extension
+      run: |
+        python -c "
+        import sys
+        import my_framework
+        print('✓ Core package imported successfully')
+        print(f'Extension in sys.modules: {\"my_framework_ext\" in sys.modules}')
+        if 'my_framework_ext' not in sys.modules:
+            print('✓ Extension not loaded (as expected)')
+        "
+    
+    - name: Test graceful error when extension is missing
+      run: |
+        python -c "
+        import sys
+        import my_framework
+        try:
+            tool = my_framework.ext.SuperTool()
+            print('✗ Should have raised ImportError')
+            sys.exit(1)
+        except ImportError as e:
+            if 'Missing extension' in str(e) and 'my_framework_ext' in str(e):
+                print('✓ Got expected ImportError with helpful message')
+                print(f'   Message: {e}')
+            else:
+                print('✗ ImportError message incorrect')
+                print(f'   Got: {e}')
+                sys.exit(1)
+        "
+
+  test-python-versions:
+    name: Test Multiple Python Versions (Quick Check)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.12']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install packages
+      run: |
+        python -m pip install --upgrade pip
+        pip install hatchling
+        pip install -e ./core
+        pip install -e ./extension
+    
+    - name: Run demo
+      run: python demo.py

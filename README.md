@@ -1,5 +1,7 @@
 # Lazy Loading Demo with PEP 562
 
+[![Test Lazy Loading Demo](https://github.com/ekzhu/lazy-loading-demo/actions/workflows/test.yml/badge.svg)](https://github.com/ekzhu/lazy-loading-demo/actions/workflows/test.yml)
+
 This repository demonstrates how to use PEP 562 (`__getattr__` at module level) to implement lazy loading of extension packages in Python.
 
 ## What is PEP 562?
