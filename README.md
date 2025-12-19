@@ -26,6 +26,11 @@ lazy-loading-demo/
 │       └── my_framework_ext/   # Distinct package name
 │           ├── __init__.py
 │           └── tools.py
+├── meta/                       # Meta package that installs everything
+│   ├── pyproject.toml
+│   └── src/
+│       └── my_framework_complete/
+│           └── __init__.py
 ├── demo.py                     # The script to prove it works
 └── README.md                   # This file
 ```
@@ -63,23 +68,55 @@ This function is called only when an attribute isn't found through normal lookup
 
 This is a completely separate, standard Python package. It doesn't know anything about the core framework and can be installed independently.
 
+### The Meta Package (`my_framework_complete`)
+
+This is a "catch-all" convenience package that installs both the core framework and all extensions. When you install this package, it automatically installs `my-framework` and `my-framework-ext` as dependencies. This is useful for:
+
+- **Easy installation**: Users can install everything with a single command
+- **Simplified documentation**: Just tell users to `pip install my-framework-complete`
+- **Version coordination**: Ensures compatible versions of all packages are installed together
+
+This pattern is common in Python ecosystems (e.g., `jupyter` installs multiple packages, `ansible` includes core and extensions).
+
 ## Setup Instructions
 
-### 1. Create a Virtual Environment
+You have **two options** for installation:
+
+### Option 1: Install the Complete Package (Recommended for Most Users)
+
+The meta package will install both the core framework and all extensions:
 
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# For this demo, install packages in order (in a real scenario, they'd be on PyPI):
+pip install -e ./core
+pip install -e ./extension
+pip install -e ./meta
 ```
 
-### 2. Install Both Packages in Editable Mode
+After installation, verify all packages are installed:
+```bash
+pip list | grep my-framework
+# Should show:
+# my-framework           0.1.0
+# my-framework-complete  0.1.0
+# my-framework-ext       0.1.0
+```
+
+### Option 2: Install Packages Individually
+
+If you only need specific components or want to understand the lazy loading behavior:
 
 ```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ./core
 pip install -e ./extension
 ```
 
-This installs both packages in "editable" mode, meaning changes to the source code are immediately reflected without reinstalling.
+This installs both packages separately in "editable" mode, meaning changes to the source code are immediately reflected without reinstalling.
 
 ### 3. Run the Demo
 
@@ -119,6 +156,33 @@ When you run the demo, you should see:
 2. **Optional Dependencies**: Extensions can be installed separately without breaking core functionality
 3. **Better Error Messages**: If an extension isn't installed, you get a helpful error message
 4. **Cleaner API**: Users can access extensions via `my_framework.ext` instead of `my_framework_ext`
+5. **Flexible Installation**: Users can install just the core, or use the meta package for everything
+
+## Package Installation Patterns
+
+This demo shows three common Python packaging patterns:
+
+### 1. Minimal Installation (Core Only)
+```bash
+pip install -e ./core
+```
+For users who only need the core functionality and want to keep dependencies minimal.
+
+### 2. À la Carte Installation
+```bash
+pip install -e ./core
+pip install -e ./extension
+```
+For users who want to install specific extensions they need. Thanks to lazy loading, even if an extension is installed, it won't be imported until used.
+
+### 3. Complete Installation (Meta Package)
+```bash
+pip install -e ./meta
+```
+For users who want everything installed at once. The meta package (`my-framework-complete`) declares both `my-framework` and `my-framework-ext` as dependencies, so one command installs all packages. This pattern is used by:
+- **Jupyter** (`jupyter` installs `jupyter-core`, `notebook`, `qtconsole`, etc.)
+- **Ansible** (`ansible` installs `ansible-core` and multiple collections)
+- **Django-CMS** (meta package installs core and common plugins)
 
 ## Testing Without the Extension
 
@@ -141,6 +205,30 @@ print("   Core framework imported successfully without extension!")
 ```
 
 This demonstrates that the core framework works independently.
+
+## Real-World Deployment
+
+In a production environment where packages are published to PyPI, the installation would be much simpler:
+
+### For End Users (Production)
+```bash
+# Install everything at once
+pip install my-framework-complete
+
+# Or install selectively
+pip install my-framework              # Core only
+pip install my-framework my-framework-ext  # Core + specific extensions
+```
+
+### For This Demo (Local Development)
+Since the packages aren't published to PyPI, you need to install them from local directories in the correct order (dependencies first):
+```bash
+pip install -e ./core
+pip install -e ./extension
+pip install -e ./meta  # Now the dependencies are satisfied
+```
+
+The meta package's `pyproject.toml` declares `my-framework` and `my-framework-ext` as dependencies, so when published to PyPI, installing `my-framework-complete` would automatically install both dependencies from PyPI.
 
 ## Real-World Use Cases
 

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-framework-complete"
+version = "0.1.0"
+description = "Meta package that installs the core framework and all extensions"
+# Note: In a real-world scenario, these would reference published packages.
+# For this demo, install the local packages first:
+#   pip install -e ./core
+#   pip install -e ./extension
+#   pip install -e ./meta
+dependencies = [
+    "my-framework",
+    "my-framework-ext",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/my_framework_complete"]
+
