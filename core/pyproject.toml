@@ -1,0 +1,12 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-framework"
+version = "0.1.0"
+description = "The core framework with lazy loading"
+dependencies = [] # Note: We do NOT strictly depend on the extension here
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/my_framework"]
